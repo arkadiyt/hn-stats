@@ -3,14 +3,25 @@ require 'net/https'
 require 'nokogiri'
 
 def get_top_level_posts(link)
-  response = Net::HTTP.get(URI(link))
-  document = Nokogiri::HTML(response)
+  posts = []
 
-  # Top level posts are those inside a <td class="default"> preceded by a
-  # <td><img width="0"></td>
-  posts = document.css('td.ind > img[width="0"]').map do |node|
-    node.parent.css('~ td.default span.c00').text.downcase
+  Kernel.loop do
+    puts "Fetching #{link}"
+    response = Net::HTTP.get(URI(link))
+    document = Nokogiri::HTML(response)
+
+    # Top level posts are those inside a <td class="default"> preceded by a
+    # <td><img width="0"></td>
+    posts.concat(document.css('td.ind > img[width="0"]').map do |node|
+      node.parent.css('~ td.default span.c00').text.downcase
+    end)
+
+    morelink = document.css('a.morelink').first
+    break unless morelink
+    link = "https://news.ycombinator.com/#{morelink.attr('href')}"
   end
+
+  posts
 end
 
 CSV.open('whoishiring.csv', :headers => true) do |input|
@@ -26,4 +37,3 @@ CSV.open('whoishiring.csv', :headers => true) do |input|
     end
   end
 end
-
